@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Préstamo de Laptops — Sala de Cómputo</title>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.23.0/umd/index.min.js"></script>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;color:#1a202c;min-height:100vh}
+
+        .login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;z-index:500;padding:1rem}
+        .login-card{background:#fff;border-radius:18px;padding:2.2rem;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+        .login-card h2{font-size:1.15rem;text-align:center;margin-bottom:.25rem;color:#1e293b}
+        .login-sub{text-align:center;color:#94a3b8;font-size:.83rem;margin-bottom:1.4rem}
+        .login-emoji{font-size:2.4rem;text-align:center;margin-bottom:.4rem}
+
+        header{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;padding:.85rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(79,70,229,.4)}
+        header .title{font-size:1.1rem;font-weight:700}
+        header .sub{font-size:.78rem;opacity:.8;margin-top:.1rem}
+        .hdr-right{margin-left:auto;display:flex;align-items:center;gap:.6rem}
+        .sync-badge{display:flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.15);border-radius:999px;padding:.35rem .9rem;font-size:.8rem;cursor:pointer;transition:background .2s;white-space:nowrap}
+        .sync-badge:hover{background:rgba(255,255,255,.25)}
+        .sync-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0;transition:background .3s}
+        .sync-dot.ok{background:#4ade80;box-shadow:0 0 6px #4ade80}
+        .sync-dot.syncing{background:#fbbf24;animation:blink .7s infinite}
+        .sync-dot.error{background:#f87171}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+        .user-badge{display:flex;align-items:center;gap:.45rem;background:rgba(255,255,255,.15);border-radius:999px;padding:.35rem .9rem;font-size:.8rem;cursor:pointer;transition:background .2s;white-space:nowrap}
+        .user-badge:hover{background:rgba(255,255,255,.25)}
+
+        nav{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 1.5rem;display:flex;overflow-x:auto;position:sticky;top:57px;z-index:40}
+        nav button{padding:.8rem 1.1rem;border:none;background:none;cursor:pointer;font-size:.85rem;font-weight:500;color:#718096;border-bottom:3px solid transparent;white-space:nowrap;transition:all .15s}
+        nav button.active{color:#4f46e5;border-bottom-color:#4f46e5}
+        nav button:hover:not(.active){color:#2d3748;background:#f7fafc}
+
+        main{padding:1.5rem;max-width:1100px;margin:0 auto}
+        .section{display:none}.section.active{display:block}
+
+        .card{background:#fff;border-radius:14px;padding:1.4rem;box-shadow:0 1px 6px rgba(0,0,0,.07);margin-bottom:1.4rem}
+        .card-title{font-size:.95rem;font-weight:700;color:#1e293b;margin-bottom:1.1rem}
+
+        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.4rem}
+        .stat{background:#fff;border-radius:14px;padding:1.1rem 1.3rem;box-shadow:0 1px 6px rgba(0,0,0,.07);display:flex;align-items:center;gap:.85rem}
+        .stat-icon{font-size:1.8rem;line-height:1}
+        .stat-label{font-size:.72rem;color:#718096;margin-bottom:.1rem}
+        .stat-num{font-size:1.8rem;font-weight:800;line-height:1}
+        .c-blue{color:#4f46e5}.c-green{color:#16a34a}.c-red{color:#dc2626}.c-orange{color:#d97706}
+
+        .tbl-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse}
+        th{text-align:left;padding:.6rem .9rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#718096;background:#f7fafc;border-bottom:1px solid #e2e8f0}
+        td{padding:.65rem .9rem;border-bottom:1px solid #f0f4f8;font-size:.86rem;vertical-align:middle}
+        tbody tr:hover td{background:#fafbff}
+        .code{background:#f1f5f9;padding:.15rem .45rem;border-radius:5px;font-family:monospace;font-size:.8rem;font-weight:600}
+
+        .badge{padding:.2rem .6rem;border-radius:999px;font-size:.7rem;font-weight:700}
+        .badge-disp{background:#dcfce7;color:#166534}
+        .badge-prest{background:#fee2e2;color:#991b1b}
+        .badge-dev{background:#e0f2fe;color:#0369a1}
+
+        .btn{padding:.5rem 1rem;border-radius:9px;border:none;cursor:pointer;font-size:.85rem;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:.4rem}
+        .btn-primary{background:#4f46e5;color:#fff}.btn-primary:hover{background:#4338ca}
+        .btn-success{background:#16a34a;color:#fff}.btn-success:hover{background:#15803d}
+        .btn-outline{background:#fff;border:1px solid #d1d5db;color:#374151}.btn-outline:hover{background:#f9fafb}
+        .btn-ghost{background:none;border:none;color:#6b7280;padding:.35rem .55rem;cursor:pointer}.btn-ghost:hover{background:#f3f4f6;border-radius:6px}
+        .btn-sm{padding:.35rem .7rem;font-size:.78rem}
+        .btn-xs{padding:.22rem .5rem;font-size:.73rem}
+        .btn:disabled{opacity:.5;cursor:not-allowed}
+        .btn-block{width:100%;justify-content:center}
+
+        .form-row{display:flex;gap:.9rem;flex-wrap:wrap;margin-bottom:.9rem}
+        .fg{flex:1;min-width:170px}
+        label{display:block;font-size:.78rem;font-weight:600;color:#4b5563;margin-bottom:.3rem}
+        input,select{width:100%;padding:.55rem .8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.86rem;outline:none;transition:border-color .15s}
+        input:focus,select:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+
+        .alert{padding:.7rem 1rem;border-radius:9px;margin-top:.6rem;font-size:.85rem;font-weight:500;animation:fadeIn .2s}
+        .alert-ok{background:#dcfce7;color:#166534;border:1px solid #86efac}
+        .alert-err{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+        .alert-warn{background:#fef9c3;color:#854d0e;border:1px solid #fde047}
+        .alert-info{background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+
+        .wiz-track{display:flex;margin-bottom:1.8rem;position:relative}
+        .wiz-track::before{content:'';position:absolute;top:16px;left:16.6%;right:16.6%;height:2px;background:#e2e8f0;z-index:0}
+        .wiz-step{flex:1;display:flex;flex-direction:column;align-items:center;z-index:1}
+        .wiz-circle{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;background:#e2e8f0;color:#9ca3af;transition:all .25s;border:3px solid #fff}
+        .wiz-label{font-size:.72rem;margin-top:.35rem;text-align:center;color:#9ca3af;font-weight:500}
+        .wiz-step.active .wiz-circle{background:#4f46e5;color:#fff;box-shadow:0 0 0 4px rgba(79,70,229,.18)}
+        .wiz-step.active .wiz-label{color:#4f46e5;font-weight:700}
+        .wiz-step.done .wiz-circle{background:#16a34a;color:#fff}
+        .wiz-step.done .wiz-label{color:#16a34a}
+
+        .step-panel{display:none}.step-panel.active{display:block}
+        .scan-area{text-align:center;padding:1.2rem .5rem}
+        .scan-emoji{font-size:2.6rem;margin-bottom:.6rem;display:block}
+        .scan-title{font-size:1rem;font-weight:700;margin-bottom:.35rem;color:#1e293b}
+        .scan-sub{font-size:.82rem;color:#94a3b8;margin-bottom:1.2rem}
+        .scan-input{font-size:1.05rem;padding:.7rem 1rem;text-align:center;max-width:360px;letter-spacing:.04em}
+        .scan-actions{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem}
+
+        .info-box{background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:.85rem 1.1rem;margin-bottom:1.1rem}
+        .info-box .ib-label{font-size:.7rem;color:#818cf8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.15rem}
+        .info-box .ib-value{font-size:.9rem;font-weight:700;color:#312e81}
+
+        .confirm-grid{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-bottom:1.2rem}
+        @media(max-width:480px){.confirm-grid{grid-template-columns:1fr}}
+        .ci-label{font-size:.7rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.15rem}
+        .ci-value{font-size:.9rem;font-weight:700;color:#1e293b}
+
+        .cam-wrap{position:relative;display:inline-block;margin-top:.9rem;border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+        .cam-wrap video{display:block;max-width:100%}
+        .cam-reticle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;border:3px solid #4f46e5;border-radius:12px;pointer-events:none;animation:pulse 1.5s infinite}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,.4)}50%{box-shadow:0 0 0 8px rgba(79,70,229,0)}}
+
+        .act-item{display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid #f1f5f9}
+        .act-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+        .dot-p{background:#dc2626}.dot-d{background:#16a34a}
+        .act-meta{font-size:.75rem;color:#94a3b8;white-space:nowrap;margin-left:auto}
+
+        .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:1rem}
+        .overlay.open{display:flex}
+        .modal{background:#fff;border-radius:18px;padding:1.8rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+        .modal h3{font-size:1rem;font-weight:700;margin-bottom:1.3rem;color:#1e293b}
+        .modal-footer{display:flex;gap:.7rem;justify-content:flex-end;margin-top:1.3rem;padding-top:1rem;border-top:1px solid #f1f5f9}
+
+        .empty{text-align:center;padding:2.5rem 1rem;color:#cbd5e1}
+        .empty-icon{font-size:2.2rem;margin-bottom:.6rem}
+        .empty-text{font-size:.85rem}
+        .tb{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.9rem}
+        .tb .spacer{flex:1}
+
+        .link-banner{background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:1rem 1.3rem;display:flex;align-items:center;gap:1rem;margin-bottom:1.3rem;flex-wrap:wrap}
+        .link-banner.linked{background:#dcfce7;border-color:#86efac}
+        .link-banner .lb-icon{font-size:1.6rem;flex-shrink:0}
+        .link-banner .lb-text{flex:1;min-width:180px}
+        .link-banner .lb-title{font-size:.88rem;font-weight:700;color:#1e293b;margin-bottom:.15rem}
+        .link-banner .lb-sub{font-size:.78rem;color:#64748b}
+
+        .cfg-steps{counter-reset:step;margin:1rem 0}
+        .cfg-step{display:flex;gap:.9rem;padding:.7rem 0;border-bottom:1px solid #f1f5f9}
+        .cfg-step:last-child{border-bottom:none}
+        .cfg-num{counter-increment:step;flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700}
+        .cfg-num::before{content:counter(step)}
+        .cfg-text{font-size:.86rem;color:#374151;line-height:1.5;padding-top:.15rem}
+        .cfg-text strong{color:#1e293b}
+        .cfg-text code{background:#f1f5f9;padding:.1rem .4rem;border-radius:5px;font-size:.8rem}
+
+        @media(max-width:640px){main{padding:1rem}.form-row{flex-direction:column}}
+    </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+    <div class="login-card">
+        <div class="login-emoji">💻</div>
+        <h2>Sala de Cómputo</h2>
+        <div class="login-sub">Inicia sesión para continuar</div>
+        <div class="fg" style="margin-bottom:.9rem">
+            <label>Usuario</label>
+            <input id="lg-user" placeholder="usuario" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('lg-pass').focus()">
+        </div>
+        <div class="fg" style="margin-bottom:1.2rem">
+            <label>Contraseña</label>
+            <input id="lg-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-login" onclick="doLogin()">Ingresar</button>
+        <div id="fb-login"></div>
+    </div>
+</div>
+
+<div id="app-shell" style="display:none">
+
+<header>
+    <span style="font-size:1.6rem">💻</span>
+    <div>
+        <div class="title">Sala de Cómputo</div>
+        <div class="sub">Sistema de Préstamo de Laptops</div>
+    </div>
+    <div class="hdr-right">
+        <div class="sync-badge" onclick="showSec('config')" title="Estado de conexión">
+            <div class="sync-dot" id="sync-dot"></div>
+            <span id="sync-label">Conectando…</span>
+        </div>
+        <div class="user-badge" onclick="doLogout()" title="Cerrar sesión">
+            <span id="user-name"></span>
+            <span style="opacity:.75">⎋</span>
+        </div>
+    </div>
+</header>
+
+<nav>
+    <button class="active" onclick="showSec('dashboard')">📊 Dashboard</button>
+    <button onclick="showSec('equipos')">🖥️ Equipos</button>
+    <button onclick="showSec('prestamo')">📤 Préstamo</button>
+    <button onclick="showSec('liberar')">📥 Liberar</button>
+    <button onclick="showSec('historial')">📋 Historial</button>
+    <button onclick="showSec('usuarios')" id="nav-usuarios">👥 Usuarios</button>
+    <button onclick="showSec('config')" id="nav-config">⚙️ Configuración</button>
+</nav>
+
+<main>
+
+<!-- DASHBOARD -->
+<div id="sec-dashboard" class="section active">
+    <div id="conn-banner" class="link-banner" style="display:none"></div>
+    <div class="stats" id="stats-grid"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem">
+        <div class="card" style="grid-column:span 2">
+            <div class="card-title">📤 Equipos Actualmente Prestados</div>
+            <div id="dash-prestados"></div>
+        </div>
+        <div class="card" style="grid-column:span 2">
+            <div class="card-title">🕐 Actividad Reciente</div>
+            <div id="dash-activity"></div>
+        </div>
+    </div>
+</div>
+
+<!-- EQUIPOS -->
+<div id="sec-equipos" class="section">
+    <div class="card">
+        <div class="tb">
+            <div class="card-title" style="margin:0">🖥️ Equipos Registrados</div>
+            <div class="spacer"></div>
+            <button class="btn btn-primary btn-sm" id="btn-add-equipo" onclick="openModal()">+ Agregar</button>
+        </div>
+        <div class="tb">
+            <input style="max-width:280px" type="text" placeholder="Buscar…" id="eq-search" oninput="renderEquipos()">
+            <select id="eq-filter" onchange="renderEquipos()" style="max-width:155px">
+                <option value="">Todos</option>
+                <option value="disponible">Disponibles</option>
+                <option value="prestado">Prestados</option>
+            </select>
+        </div>
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr><th>Código</th><th>Nombre / Modelo</th><th>Serie</th><th>Estado</th><th></th></tr></thead>
+                <tbody id="tbody-eq"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- PRÉSTAMO -->
+<div id="sec-prestamo" class="section">
+    <div class="card">
+        <div class="card-title">📤 Registrar Préstamo</div>
+        <div class="wiz-track">
+            <div class="wiz-step active" id="ws1"><div class="wiz-circle">1</div><div class="wiz-label">Equipo</div></div>
+            <div class="wiz-step" id="ws2"><div class="wiz-circle">2</div><div class="wiz-label">Alumno</div></div>
+            <div class="wiz-step" id="ws3"><div class="wiz-circle">3</div><div class="wiz-label">Confirmar</div></div>
+        </div>
+        <!-- Step 1 -->
+        <div class="step-panel active" id="sp1">
+            <div class="scan-area">
+                <span class="scan-emoji">📦</span>
+                <div class="scan-title">Escanee el código del equipo</div>
+                <div class="scan-sub">Código de barras o QR — use el lector USB o la cámara, o escríbalo y presione Enter</div>
+                <input id="inp-eq" class="scan-input" type="text" placeholder="Código de inventario…" autocomplete="off" onkeydown="if(event.key==='Enter')chkEquipo()">
+                <div class="scan-actions">
+                    <button class="btn btn-primary" onclick="chkEquipo()">Continuar →</button>
+                    <button class="btn btn-outline" onclick="togCam('c1')">📷 Escanear</button>
+                </div>
+                <div id="cam-c1" style="display:none">
+                    <div class="cam-wrap"><video id="vid-c1" width="290" height="210" autoplay playsinline muted></video><div class="cam-reticle"></div></div>
+                    <div style="margin-top:.5rem"><button class="btn btn-ghost btn-sm" onclick="stopCam('c1')">✕ Cerrar</button></div>
+                </div>
+                <div id="fb1"></div>
+            </div>
+        </div>
+        <!-- Step 2 -->
+        <div class="step-panel" id="sp2">
+            <div class="scan-area">
+                <div class="info-box" style="max-width:380px;margin:0 auto 1.2rem;text-align:left">
+                    <div class="ib-label">Equipo seleccionado</div>
+                    <div class="ib-value" id="sel-eq-info"></div>
+                </div>
+                <span class="scan-emoji">👤</span>
+                <div class="scan-title">Escanee el QR del alumno</div>
+                <div class="scan-sub">Apunte la cámara al código QR de la credencial</div>
+                <input id="inp-al" class="scan-input" type="text" placeholder="ID / Matrícula…" autocomplete="off" onkeydown="if(event.key==='Enter')chkAlumno()">
+                <div class="scan-actions">
+                    <button class="btn btn-outline" onclick="goStep(1)">← Atrás</button>
+                    <button class="btn btn-primary" onclick="chkAlumno()">Continuar →</button>
+                    <button class="btn btn-outline" onclick="togCam('c2')">📷 Escanear</button>
+                </div>
+                <div id="cam-c2" style="display:none">
+                    <div class="cam-wrap"><video id="vid-c2" width="290" height="210" autoplay playsinline muted></video><div class="cam-reticle"></div></div>
+                    <div style="margin-top:.5rem"><button class="btn btn-ghost btn-sm" onclick="stopCam('c2')">✕ Cerrar</button></div>
+                </div>
+                <div id="fb2"></div>
+            </div>
+        </div>
+        <!-- Step 3 -->
+        <div class="step-panel" id="sp3">
+            <div class="scan-area">
+                <span class="scan-emoji">🔍</span>
+                <div class="scan-title" style="margin-bottom:1.2rem">Confirmar Préstamo</div>
+                <div style="max-width:400px;margin:0 auto;text-align:left">
+                    <div class="confirm-grid">
+                        <div><div class="ci-label">📦 Equipo</div><div class="ci-value" id="cf-eq"></div></div>
+                        <div><div class="ci-label">👤 Alumno</div><div class="ci-value" id="cf-al"></div></div>
+                        <div style="grid-column:span 2"><div class="ci-label">📅 Fecha y hora</div><div class="ci-value" id="cf-fecha"></div></div>
+                    </div>
+                    <div style="display:flex;gap:.7rem;justify-content:center">
+                        <button class="btn btn-outline" onclick="goStep(2)">← Atrás</button>
+                        <button class="btn btn-success" id="btn-confirm-prestamo" onclick="confirmPrestamo()">✓ Confirmar Préstamo</button>
+                    </div>
+                </div>
+                <div id="fb3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LIBERAR -->
+<div id="sec-liberar" class="section">
+    <div class="card">
+        <div class="card-title">📥 Liberar Equipo</div>
+        <div class="scan-area">
+            <span class="scan-emoji">🔄</span>
+            <div class="scan-title">Escanee el código del equipo devuelto</div>
+            <div class="scan-sub">Código de barras o QR — el préstamo activo se cerrará automáticamente</div>
+            <input id="inp-lib" class="scan-input" type="text" placeholder="Código de inventario…" autocomplete="off" onkeydown="if(event.key==='Enter')doLiberar()">
+            <div class="scan-actions">
+                <button class="btn btn-success" id="btn-liberar" onclick="doLiberar()">Liberar Equipo</button>
+                <button class="btn btn-outline" onclick="togCam('cl')">📷 Escanear</button>
+            </div>
+            <div id="cam-cl" style="display:none">
+                <div class="cam-wrap"><video id="vid-cl" width="290" height="210" autoplay playsinline muted></video><div class="cam-reticle"></div></div>
+                <div style="margin-top:.5rem"><button class="btn btn-ghost btn-sm" onclick="stopCam('cl')">✕ Cerrar</button></div>
+            </div>
+            <div id="fb-lib"></div>
+        </div>
+    </div>
+</div>
+
+<!-- HISTORIAL -->
+<div id="sec-historial" class="section">
+    <div class="card">
+        <div class="tb">
+            <div class="card-title" style="margin:0">📋 Historial de Préstamos</div>
+        </div>
+        <div class="tb">
+            <input type="text" placeholder="Buscar…" id="h-search" oninput="renderHistorial()" style="flex:1;max-width:280px">
+            <select id="h-filter" onchange="renderHistorial()" style="max-width:150px">
+                <option value="">Todos</option>
+                <option value="activo">Activos</option>
+                <option value="devuelto">Devueltos</option>
+            </select>
+        </div>
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr><th>Código</th><th>Equipo</th><th>Alumno</th><th>Préstamo</th><th>Devolución</th><th>Estado</th></tr></thead>
+                <tbody id="tbody-hist"></tbody>
+            </table>
+        </div>
+        <div id="hist-empty" class="empty" style="display:none"><div class="empty-icon">📋</div><div class="empty-text">Sin registros</div></div>
+    </div>
+</div>
+
+<!-- USUARIOS (solo Admin) -->
+<div id="sec-usuarios" class="section">
+    <div class="card">
+        <div class="tb">
+            <div class="card-title" style="margin:0">👥 Usuarios del Sistema</div>
+            <div class="spacer"></div>
+            <button class="btn btn-primary btn-sm" onclick="openUserModal()">+ Agregar Usuario</button>
+        </div>
+        <p style="font-size:.82rem;color:#94a3b8;margin-bottom:1rem">Administrador: acceso total. Operador: solo puede registrar préstamos y liberar equipos.</p>
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th></th></tr></thead>
+                <tbody id="tbody-usr"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIGURACIÓN (solo Admin) -->
+<div id="sec-config" class="section">
+    <div class="card">
+        <div class="card-title">⚙️ URL activa del backend de datos</div>
+        <p style="font-size:.86rem;color:#64748b;margin-bottom:1rem;line-height:1.5">
+            Por seguridad, la URL real del backend (Equipos/Historial/Usuarios) ya no se guarda en el código
+            público de esta app. En su lugar, esta app consulta a un <strong>Directorio</strong> — un Apps Script
+            aparte, mínimo — para saber a cuál conectarse. Cambia la URL aquí y aplica de inmediato a
+            <strong>todas las computadoras</strong> de la sala, sin volver a publicar este archivo.
+        </p>
+        <div class="info-box">
+            <div class="ib-label">Directorio</div>
+            <div class="ib-value" id="cfg-dir-estado">—</div>
+        </div>
+        <div class="info-box">
+            <div class="ib-label">URL activa actualmente</div>
+            <div class="ib-value" id="cfg-url-actual" style="word-break:break-all">—</div>
+        </div>
+        <div class="form-row">
+            <div class="fg"><label>Nueva URL del backend de datos</label><input id="cfg-nueva-url" placeholder="https://script.google.com/macros/s/XXXXXXXX/exec"></div>
+            <div class="fg"><label>Clave de administrador del Directorio</label><input id="cfg-clave" type="password" placeholder="••••••••"></div>
+        </div>
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap">
+            <button class="btn btn-primary" id="btn-actualizar-global" onclick="actualizarUrlGlobal()">🌐 Actualizar para TODAS las computadoras</button>
+            <button class="btn btn-outline" onclick="probarConexion()">🔄 Probar Conexión</button>
+        </div>
+        <div id="fb-cfg"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">📖 Instalación desde cero (una sola vez)</div>
+        <div class="cfg-steps">
+            <div class="cfg-step"><div class="cfg-num"></div><div class="cfg-text">Instala primero el <strong>Directorio</strong> (archivo <code>directorio_backend.gs.txt</code>) — sus propias instrucciones están al inicio del archivo. Copia la URL que te da y pégala en <code>DIRECTORY_URL</code> dentro de <code>prestamo_laptops.html</code>.</div></div>
+            <div class="cfg-step"><div class="cfg-num"></div><div class="cfg-text">Instala el backend de datos (archivo <strong>google_apps_script_backend.gs.txt</strong>) sobre una Hoja de Google nueva: Extensiones → Apps Script → pega el código → Guarda.</div></div>
+            <div class="cfg-step"><div class="cfg-num"></div><div class="cfg-text">En ambos: <strong>Implementar → Nueva implementación</strong>. Tipo: <strong>Aplicación web</strong>. Ejecutar como: <strong>Yo</strong>. Acceso: <strong>Cualquier usuario</strong>.</div></div>
+            <div class="cfg-step"><div class="cfg-num"></div><div class="cfg-text">Copia la URL <code>/exec</code> del backend de datos y pégala arriba junto con la clave del Directorio, luego <strong>Actualizar para TODAS las computadoras</strong>.</div></div>
+            <div class="cfg-step"><div class="cfg-num"></div><div class="cfg-text">Inicia sesión en la app con el usuario por defecto <strong>admin / admin123</strong> y cámbialo de inmediato desde <strong>👥 Usuarios</strong>.</div></div>
+        </div>
+    </div>
+</div>
+
+</main>
+
+<!-- Modal equipo -->
+<div class="overlay" id="modal-eq">
+    <div class="modal">
+        <h3 id="modal-title">Agregar Equipo</h3>
+        <input type="hidden" id="m-id">
+        <div class="form-row">
+            <div class="fg">
+                <label>Código de Inventario *</label>
+                <div style="display:flex;gap:.5rem">
+                    <input id="m-cod" placeholder="LAP-001" style="text-transform:uppercase;flex:1">
+                    <button type="button" class="btn btn-outline" id="btn-cam-eq" onclick="togCam('cm')" title="Escanear código de barras o QR">📷</button>
+                </div>
+            </div>
+            <div class="fg"><label>Nombre / Modelo *</label><input id="m-nom" placeholder="Dell Inspiron 15"></div>
+        </div>
+        <div id="cam-cm" style="display:none;text-align:center;margin-bottom:.9rem">
+            <div class="cam-wrap"><video id="vid-cm" width="290" height="210" autoplay playsinline muted></video><div class="cam-reticle"></div></div>
+            <div style="margin-top:.5rem"><button class="btn btn-ghost btn-sm" type="button" onclick="stopCam('cm')">✕ Cerrar</button></div>
+            <div id="fb-cm"></div>
+        </div>
+        <div class="form-row">
+            <div class="fg"><label>N° Serie</label><input id="m-ser" placeholder="SN123456"></div>
+            <div class="fg"><label>Notas</label><input id="m-not" placeholder="Observaciones…"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+            <button class="btn btn-primary" id="btn-save-eq" onclick="saveEquipo()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal usuario -->
+<div class="overlay" id="modal-usr">
+    <div class="modal">
+        <h3 id="modal-usr-title">Agregar Usuario</h3>
+        <div class="form-row">
+            <div class="fg"><label>Usuario *</label><input id="u-user" placeholder="jperez"></div>
+            <div class="fg"><label>Nombre</label><input id="u-nombre" placeholder="Juan Pérez"></div>
+        </div>
+        <div class="form-row">
+            <div class="fg"><label>Contraseña <span id="u-pass-hint" style="font-weight:400;color:#94a3b8"></span></label><input id="u-pass" type="password" placeholder="••••••••"></div>
+            <div class="fg"><label>Rol</label><select id="u-rol"><option value="operador">Operador</option><option value="admin">Administrador</option></select></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeUserModal()">Cancelar</button>
+            <button class="btn btn-primary" id="btn-save-usr" onclick="saveUsuario()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+</div><!-- /app-shell -->
+
+<script>
+// ═══ CONFIG / ESTADO ═════════════════════════════════════════════
+// Por seguridad, la URL real del backend de datos (Equipos/Historial/
+// Usuarios) NO se guarda en este archivo público. Este archivo solo
+// conoce la URL del "Directorio" — un Apps Script mínimo, separado, cuyo
+// único trabajo es decir cuál es la URL activa en este momento. El
+// administrador cambia la URL activa desde ⚙️ Configuración; aplica a
+// todas las computadoras de inmediato, sin volver a publicar este HTML.
+// Ver directorio_backend.gs.txt para instalar/administrar el Directorio.
+const DIRECTORY_URL = 'PEGA_AQUI_LA_URL_DEL_DIRECTORIO/exec';
+
+let API_URL   = localStorage.getItem('sc_api_url_cache') || ''; // solo caché de respaldo si el Directorio no responde
+let TOKEN     = localStorage.getItem('sc_token') || '';
+let ROL       = localStorage.getItem('sc_rol') || '';
+let USUARIO   = localStorage.getItem('sc_usuario') || '';
+let NOMBRE    = localStorage.getItem('sc_nombre') || '';
+let equipos   = [];
+let prestamos = [];
+let usuariosCache = [];
+let online    = false;
+let pollTimer = null;
+let dirDisponible = false;
+
+// Consulta al Directorio cuál es la URL activa del backend de datos.
+// Si el Directorio no responde, se usa la última URL conocida en caché
+// (guardada en este navegador) para no dejar la app totalmente inutilizable.
+async function cargarUrlActiva(){
+    if(DIRECTORY_URL.indexOf('PEGA_AQUI')===0){
+        console.error('Falta configurar DIRECTORY_URL en el código.');
+        return !!API_URL;
+    }
+    try{
+        const res = await fetch(DIRECTORY_URL + '?t=' + Date.now());
+        const data = await res.json();
+        dirDisponible = true;
+        if(data.apiUrl){
+            API_URL = data.apiUrl;
+            localStorage.setItem('sc_api_url_cache', API_URL);
+            return true;
+        }
+        return !!API_URL;
+    }catch(e){
+        dirDisponible = false;
+        console.error('No se pudo contactar al Directorio:', e);
+        return !!API_URL;
+    }
+}
+
+// ═══ API — todas las lecturas/escrituras van al servidor compartido ═
+async function apiGet(action, extra){
+    let url = API_URL + (API_URL.includes('?')?'&':'?') + 'action=' + action + '&token=' + encodeURIComponent(TOKEN) + '&t=' + Date.now();
+    if(extra) url += '&' + extra;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.authError){ forceLogout('Tu sesión expiró. Inicia sesión de nuevo.'); throw new Error('Sesión expirada'); }
+    if(data.error) throw new Error(data.error);
+    return data;
+}
+async function apiPost(action, payload){
+    const body = new URLSearchParams();
+    body.set('action', action);
+    body.set('token', TOKEN);
+    body.set('payload', JSON.stringify(payload || {}));
+    const res = await fetch(API_URL, { method:'POST', body });
+    const data = await res.json();
+    if(data.authError){ forceLogout('Tu sesión expiró. Inicia sesión de nuevo.'); throw new Error('Sesión expirada'); }
+    if(data.error) throw new Error(data.error);
+    return data;
+}
+
+async function refreshData(silent){
+    if(!silent) setConnStatus('syncing','Conectando…');
+    try{
+        const data = await apiGet('data');
+        equipos = data.equipos; prestamos = data.prestamos;
+        online = true;
+        setConnStatus('ok','Conectado');
+        updateConnBanner(true);
+        renderCurrentSection();
+        return true;
+    }catch(e){
+        online = false;
+        setConnStatus('error','Sin conexión');
+        updateConnBanner(false);
+        console.error('refreshData:', e);
+        return false;
+    }
+}
+
+function renderCurrentSection(){
+    if(document.getElementById('sec-dashboard').classList.contains('active')) renderDashboard();
+    if(document.getElementById('sec-equipos').classList.contains('active'))   renderEquipos();
+    if(document.getElementById('sec-historial').classList.contains('active'))renderHistorial();
+}
+
+function startPolling(){
+    if(pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(()=>{ if(TOKEN) refreshData(true); }, 8000);
+}
+
+// ═══ LOGIN / SESIÓN ═══════════════════════════════════════════════
+async function doLogin(){
+    const usuario = document.getElementById('lg-user').value.trim();
+    const password = document.getElementById('lg-pass').value;
+    if(!usuario || !password){ fbLogin('Ingresa usuario y contraseña.','err'); return; }
+    const btn = document.getElementById('btn-login'); btn.disabled=true; btn.textContent='Ingresando…';
+    try{
+        const body = new URLSearchParams();
+        body.set('action','login');
+        body.set('payload', JSON.stringify({usuario, password}));
+        const res = await fetch(API_URL, { method:'POST', body });
+        const data = await res.json();
+        if(data.error){ fbLogin(data.error,'err'); return; }
+        TOKEN=data.token; ROL=data.rol; USUARIO=data.usuario; NOMBRE=data.nombre||data.usuario;
+        localStorage.setItem('sc_token', TOKEN);
+        localStorage.setItem('sc_rol', ROL);
+        localStorage.setItem('sc_usuario', USUARIO);
+        localStorage.setItem('sc_nombre', NOMBRE);
+        document.getElementById('lg-user').value=''; document.getElementById('lg-pass').value=''; document.getElementById('fb-login').innerHTML='';
+        await startApp();
+    }catch(e){
+        fbLogin('No se pudo conectar con el servidor. Revisa tu conexión a internet.','err');
+    }finally{
+        btn.disabled=false; btn.textContent='Ingresar';
+    }
+}
+function fbLogin(msg,tipo){
+    const map={ok:'alert-ok',err:'alert-err',warn:'alert-warn',info:'alert-info'};
+    document.getElementById('fb-login').innerHTML = `<div class="alert ${map[tipo]}">${msg}</div>`;
+}
+function forceLogout(msg){
+    TOKEN=''; ROL=''; USUARIO=''; NOMBRE='';
+    localStorage.removeItem('sc_token'); localStorage.removeItem('sc_rol');
+    localStorage.removeItem('sc_usuario'); localStorage.removeItem('sc_nombre');
+    if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
+    document.getElementById('app-shell').style.display='none';
+    document.getElementById('login-screen').style.display='flex';
+    if(msg) fbLogin(msg,'warn');
+    // Vuelve a preguntarle al Directorio cuál es la URL activa — por si el
+    // cierre de sesión ocurrió porque el administrador migró el backend.
+    cargarUrlActiva();
+}
+function doLogout(){
+    if(!confirm('¿Cerrar sesión?')) return;
+    apiPost('logout',{}).catch(()=>{});
+    forceLogout();
+}
+async function startApp(){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app-shell').style.display='block';
+    applyRoleUI();
+    showSec('dashboard');
+    const ok = await refreshData(false);
+    if(ok) startPolling();
+}
+function applyRoleUI(){
+    document.getElementById('user-name').textContent = NOMBRE + (ROL==='admin' ? ' · Admin' : ' · Operador');
+    const navBtns = document.querySelectorAll('nav button');
+    navBtns[SECS.indexOf('usuarios')].style.display = ROL==='admin' ? '' : 'none';
+    navBtns[SECS.indexOf('config')].style.display   = ROL==='admin' ? '' : 'none';
+    document.getElementById('btn-add-equipo').style.display = ROL==='admin' ? '' : 'none';
+}
+
+// ═══ CONFIGURACIÓN — URL global vía el Directorio ═══════════════
+async function refrescarEstadoConfig(){
+    await cargarUrlActiva();
+    document.getElementById('cfg-url-actual').textContent = API_URL || '(sin configurar todavía)';
+    document.getElementById('cfg-dir-estado').textContent = dirDisponible ? '✅ Directorio conectado' : '❌ No se pudo contactar al Directorio';
+}
+async function actualizarUrlGlobal(){
+    const nuevaUrl = document.getElementById('cfg-nueva-url').value.trim();
+    const clave = document.getElementById('cfg-clave').value;
+    if(!nuevaUrl || !clave){ fb('fb-cfg','Completa la URL nueva y la clave de administrador del Directorio.','err'); return; }
+    const btn = document.getElementById('btn-actualizar-global'); btn.disabled=true; btn.textContent='Actualizando…';
+    try{
+        const body = new URLSearchParams();
+        body.set('action','setUrl');
+        body.set('payload', JSON.stringify({ url: nuevaUrl, clave }));
+        const res = await fetch(DIRECTORY_URL, { method:'POST', body });
+        const data = await res.json();
+        if(data.error){ fb('fb-cfg','❌ '+data.error,'err'); return; }
+        document.getElementById('cfg-clave').value='';
+        document.getElementById('cfg-nueva-url').value='';
+        fb('fb-cfg','✅ Actualizado. Todas las computadoras usarán esta URL desde su próxima conexión — puede que deban cerrar sesión y volver a entrar.','ok');
+        await refrescarEstadoConfig();
+    }catch(e){
+        fb('fb-cfg','❌ No se pudo conectar con el Directorio. Revisa DIRECTORY_URL en el código.','err');
+    }finally{
+        btn.disabled=false; btn.textContent='🌐 Actualizar para TODAS las computadoras';
+    }
+}
+function probarConexion(){
+    fb('fb-cfg','Probando…','info');
+    refreshData(false).then(ok=>{
+        fb('fb-cfg', ok ? '✅ Conexión exitosa con el backend de datos.' : '❌ No se pudo conectar al backend de datos.', ok?'ok':'err');
+    });
+}
+
+// ═══ SYNC STATUS / BANNER ════════════════════════════════════════
+function setConnStatus(state, label){
+    document.getElementById('sync-dot').className = 'sync-dot '+state;
+    document.getElementById('sync-label').textContent = label;
+}
+function updateConnBanner(connected){
+    const b = document.getElementById('conn-banner');
+    if(connected){ b.style.display='none'; return; }
+    b.style.display='flex';
+    b.className = 'link-banner';
+    b.innerHTML = ROL==='admin'
+        ? `<div class="lb-icon">🔌</div>
+           <div class="lb-text"><div class="lb-title">Sin conexión con el servidor</div><div class="lb-sub">Ve a <strong>⚙️ Configuración</strong> para revisar la URL o la conexión a internet.</div></div>
+           <button class="btn btn-primary btn-sm" onclick="showSec('config')">⚙️ Configuración</button>`
+        : `<div class="lb-icon">🔌</div>
+           <div class="lb-text"><div class="lb-title">Sin conexión con el servidor</div><div class="lb-sub">Revisa tu conexión a internet o avisa al administrador.</div></div>`;
+}
+
+// ═══ NAVEGACIÓN ═════════════════════════════════════════════════
+const SECS=['dashboard','equipos','prestamo','liberar','historial','usuarios','config'];
+function showSec(n){
+    if((n==='usuarios'||n==='config') && ROL!=='admin') n='dashboard';
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.getElementById('sec-'+n).classList.add('active');
+    document.querySelectorAll('nav button')[SECS.indexOf(n)].classList.add('active');
+    stopAllCams();
+    if(n==='dashboard') { refreshData(true); renderDashboard(); }
+    if(n==='equipos')   { refreshData(true); renderEquipos(); }
+    if(n==='historial') { refreshData(true); renderHistorial(); }
+    if(n==='prestamo')  { refreshData(true); resetPrestamo(); }
+    if(n==='liberar')   { refreshData(true); resetLiberar(); }
+    if(n==='usuarios')  { loadUsuarios(); }
+    if(n==='config')    { refrescarEstadoConfig(); }
+}
+
+// ═══ DASHBOARD ══════════════════════════════════════════════════
+function renderDashboard(){
+    const total=equipos.length, prest=equipos.filter(e=>e.estado==='prestado').length, disp=total-prest;
+    const hoy=prestamos.filter(p=>{try{const d=new Date(p.fechaPrestamo),n=new Date();return d.toDateString()===n.toDateString();}catch(_){return false;}}).length;
+    document.getElementById('stats-grid').innerHTML=`
+        <div class="stat"><div class="stat-icon">🖥️</div><div><div class="stat-label">Total Equipos</div><div class="stat-num c-blue">${total}</div></div></div>
+        <div class="stat"><div class="stat-icon">✅</div><div><div class="stat-label">Disponibles</div><div class="stat-num c-green">${disp}</div></div></div>
+        <div class="stat"><div class="stat-icon">📤</div><div><div class="stat-label">Prestados</div><div class="stat-num c-red">${prest}</div></div></div>
+        <div class="stat"><div class="stat-icon">📅</div><div><div class="stat-label">Préstamos Hoy</div><div class="stat-num c-orange">${hoy}</div></div></div>`;
+    const activos=prestamos.filter(p=>p.estado==='activo');
+    document.getElementById('dash-prestados').innerHTML=activos.length===0
+        ?'<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">Todos los equipos disponibles</div></div>'
+        :`<div class="tbl-wrap"><table><thead><tr><th>Código</th><th>Equipo</th><th>Alumno</th><th>Desde</th></tr></thead><tbody>${
+            activos.map(p=>{const eq=equipos.find(e=>e.codigo===p.codigoEquipo);return`<tr><td><span class="code">${p.codigoEquipo}</span></td><td>${eq?eq.nombre:'—'}</td><td>${p.alumnoNombre||p.alumnoId}</td><td>${fmtF(p.fechaPrestamo)}</td></tr>`;}).join('')
+        }</tbody></table></div>`;
+    const rec=[...prestamos].reverse().slice(0,10);
+    document.getElementById('dash-activity').innerHTML=rec.length===0
+        ?'<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Sin actividad aún</div></div>'
+        :rec.map(p=>{const quien=p.alumnoNombre||p.alumnoId;return`<div class="act-item"><div class="act-dot ${p.estado==='activo'?'dot-p':'dot-d'}"></div><div><span style="font-weight:600">${p.codigoEquipo}</span><span style="color:#94a3b8"> — ${p.estado==='activo'?`prestado a <strong>${quien}</strong>`:`devuelto por <strong>${quien}</strong>`}</span></div><div class="act-meta">${fmtF(p.estado==='activo'?p.fechaPrestamo:p.fechaDevolucion)}</div></div>`;}).join('');
+}
+
+// ═══ EQUIPOS ════════════════════════════════════════════════════
+function renderEquipos(){
+    const q=(document.getElementById('eq-search').value||'').toLowerCase();
+    const f=document.getElementById('eq-filter').value;
+    const lista=equipos.filter(e=>(!q||(e.codigo+' '+e.nombre).toLowerCase().includes(q))&&(!f||e.estado===f));
+    document.getElementById('tbody-eq').innerHTML=!lista.length
+        ?`<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.8rem">${online?'Sin equipos registrados':'Sin conexión con el servidor'}</td></tr>`
+        :lista.map(e=>`<tr>
+            <td><span class="code">${e.codigo}</span></td><td>${e.nombre}</td>
+            <td style="color:#94a3b8;font-size:.8rem">${e.serie||'—'}</td>
+            <td><span class="badge ${e.estado==='disponible'?'badge-disp':'badge-prest'}">${e.estado==='disponible'?'Disponible':'Prestado'}</span></td>
+            <td>${ROL==='admin' ? `<button class="btn-ghost btn-xs" onclick="openModal('${e.codigo}')">✏️</button>${e.estado==='disponible'?`<button class="btn-ghost btn-xs" onclick="delEquipo('${e.codigo}')">🗑️</button>`:''}` : ''}</td>
+        </tr>`).join('');
+}
+let editCod=null;
+function openModal(codigo=null){
+    if(ROL!=='admin') return;
+    editCod=codigo;
+    ['m-cod','m-nom','m-ser','m-not'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('modal-title').textContent=codigo?'Editar Equipo':'Agregar Equipo';
+    document.getElementById('m-cod').disabled=false;
+    document.getElementById('btn-cam-eq').disabled=false;
+    if(codigo){
+        const e=equipos.find(x=>x.codigo===codigo);
+        if(e){
+            document.getElementById('m-cod').value=e.codigo;
+            document.getElementById('m-nom').value=e.nombre;
+            document.getElementById('m-ser').value=e.serie||'';
+            document.getElementById('m-not').value=e.notas||'';
+            if(e.estado==='prestado'){ document.getElementById('m-cod').disabled=true; document.getElementById('btn-cam-eq').disabled=true; }
+        }
+    }
+    document.getElementById('modal-eq').classList.add('open');
+    setTimeout(()=>document.getElementById(codigo?'m-nom':'m-cod').focus(),50);
+}
+function closeModal(){ stopCam('cm'); document.getElementById('modal-eq').classList.remove('open'); }
+document.getElementById('modal-eq').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+async function saveEquipo(){
+    const cod=document.getElementById('m-cod').value.trim().toUpperCase();
+    const nom=document.getElementById('m-nom').value.trim();
+    if(!cod||!nom){alert('El código y el nombre son obligatorios.');return;}
+    const btn=document.getElementById('btn-save-eq'); btn.disabled=true; btn.textContent='Guardando…';
+    try{
+        const payload={codigo:cod, nombre:nom, serie:document.getElementById('m-ser').value.trim(), notas:document.getElementById('m-not').value.trim()};
+        if(editCod){
+            payload.codigoOriginal=editCod;
+            const data=await apiPost('updateEquipo', payload);
+            equipos=data.equipos; prestamos=data.prestamos;
+        }else{
+            const data=await apiPost('addEquipo', payload);
+            equipos=data.equipos; prestamos=data.prestamos;
+        }
+        closeModal(); renderEquipos(); renderDashboard();
+    }catch(e){
+        alert('Error: '+e.message);
+    }finally{
+        btn.disabled=false; btn.textContent='Guardar';
+    }
+}
+async function delEquipo(codigo){
+    if(!confirm('¿Eliminar este equipo?'))return;
+    try{
+        const data=await apiPost('deleteEquipo', {codigo});
+        equipos=data.equipos; prestamos=data.prestamos;
+        renderEquipos(); renderDashboard();
+    }catch(e){
+        alert('Error: '+e.message);
+    }
+}
+
+// ═══ PRÉSTAMO WIZARD ═══════════════════════════════════════════
+let pStep=1,pEquipo=null,pAlumno=null;
+function resetPrestamo(){
+    pStep=1;pEquipo=null;pAlumno=null;goStep(1);
+    ['inp-eq','inp-al'].forEach(x=>document.getElementById(x).value='');
+    ['fb1','fb2','fb3'].forEach(x=>document.getElementById(x).innerHTML='');
+    setTimeout(()=>document.getElementById('inp-eq').focus(),100);
+}
+function goStep(n){
+    pStep=n;
+    [1,2,3].forEach(i=>{
+        document.getElementById('sp'+i).classList.toggle('active',i===n);
+        const w=document.getElementById('ws'+i);w.classList.remove('active','done');
+        if(i<n)w.classList.add('done');if(i===n)w.classList.add('active');
+    });
+    if(n===2)setTimeout(()=>document.getElementById('inp-al').focus(),100);
+    if(n===3){
+        document.getElementById('cf-eq').textContent=`${pEquipo.codigo} — ${pEquipo.nombre}`;
+        document.getElementById('cf-al').textContent = pAlumno.nombre || pAlumno.id;
+        document.getElementById('cf-fecha').textContent=fmtF(new Date().toISOString());
+    }
+}
+function chkEquipo(){
+    const cod=document.getElementById('inp-eq').value.trim().toUpperCase();
+    if(!cod){fb('fb1','Ingrese o escanee un código.','err');return;}
+    const eq=equipos.find(e=>e.codigo===cod);
+    if(!eq){fb('fb1',`No se encontró el equipo "${cod}".`,'err');return;}
+    if(eq.estado==='prestado'){fb('fb1',`"${eq.nombre}" ya está prestado.`,'warn');return;}
+    pEquipo=eq;document.getElementById('sel-eq-info').textContent=`${eq.codigo} — ${eq.nombre}`;stopCam('c1');goStep(2);
+}
+
+// Extrae nombre y correo (@up.edu.pe si existe) de un QR con formato vCard
+// (BEGIN:VCARD...END:VCARD). Si el texto escaneado no es un vCard, retorna null
+// y se usa tal cual como ID de alumno (matrícula, código, etc.).
+function parseVCard(raw){
+    if(!raw || raw.toUpperCase().indexOf('VCARD')===-1) return null;
+    // Nota: algunos lectores QR devuelven el vCard sin saltos de línea entre
+    // campos, así que el límite de cada valor se detecta buscando el inicio
+    // literal del siguiente campo conocido (sin exigir separador previo).
+    const boundary = '(?=(?:N;|EMAIL|ORG|TITLE|BDAY|TEL|URL|ADR|NOTE|REV|END:VCARD)|$)';
+    const fnRe    = new RegExp('FN(?:;[^:]*)?:([\\s\\S]*?)'+boundary, 'i');
+    const emailRe = new RegExp('EMAIL(?:;[^:]*)?:([\\s\\S]*?)'+boundary, 'gi');
+    let nombre = '';
+    const fnMatch = raw.match(fnRe);
+    if(fnMatch) nombre = fnMatch[1].trim();
+    const emails = [];
+    let m;
+    while((m = emailRe.exec(raw)) !== null){
+        const val = m[1].trim();
+        if(val) emails.push(val);
+    }
+    if(!nombre && !emails.length) return null;
+    const emailUP = emails.find(e=>/@up\.edu\.pe$/i.test(e));
+    return { nombre: nombre, email: (emailUP || emails[0] || '').trim() };
+}
+
+function chkAlumno(){
+    const raw=document.getElementById('inp-al').value.trim();
+    if(!raw){fb('fb2','Ingrese o escanee el ID del alumno.','err');return;}
+    const parsed = parseVCard(raw);
+    let alumno;
+    if(parsed && parsed.email){
+        alumno = { id: parsed.email, nombre: parsed.nombre || '', email: parsed.email };
+    }else{
+        alumno = { id: raw, nombre: '', email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw) ? raw : '' };
+    }
+    // Reemplaza el texto crudo del QR (vCard) por solo el nombre, para no
+    // dejar visible toda la información del código escaneado.
+    document.getElementById('inp-al').value = alumno.nombre || alumno.id;
+    const act=prestamos.find(p=>p.alumnoId===alumno.id&&p.estado==='activo');
+    if(act)fb('fb2',`⚠️ Este alumno ya tiene préstamo activo (${act.codigoEquipo}). Puede continuar.`,'warn');
+    pAlumno=alumno;stopCam('c2');goStep(3);
+}
+async function confirmPrestamo(){
+    const btn=document.getElementById('btn-confirm-prestamo'); btn.disabled=true; btn.textContent='Guardando…';
+    try{
+        const data=await apiPost('prestar', {codigo:pEquipo.codigo, alumnoId:pAlumno.id, alumnoNombre:pAlumno.nombre, alumnoEmail:pAlumno.email});
+        equipos=data.equipos; prestamos=data.prestamos;
+        const quien = pAlumno.nombre || pAlumno.id;
+        let msg = `✅ Préstamo registrado — <strong>${pEquipo.codigo}</strong> asignado a <strong>${quien}</strong>.`;
+        if(pAlumno.email){
+            msg += data.correoEnviado ? ' Se envió confirmación por correo.' : ' ⚠️ No se pudo enviar el correo de confirmación (revisa con el administrador).';
+        }
+        fb('fb3', msg, data.correoEnviado===false ? 'warn' : 'ok');
+        if(data.correoEnviado===false && data.correoError) console.error('Error de correo:', data.correoError);
+        setTimeout(()=>resetPrestamo(),2600);
+    }catch(e){
+        fb('fb3','❌ '+e.message,'err');
+    }finally{
+        btn.disabled=false; btn.textContent='✓ Confirmar Préstamo';
+    }
+}
+
+// ═══ LIBERAR ════════════════════════════════════════════════════
+function resetLiberar(){document.getElementById('inp-lib').value='';document.getElementById('fb-lib').innerHTML='';setTimeout(()=>document.getElementById('inp-lib').focus(),100);}
+async function doLiberar(){
+    const cod=document.getElementById('inp-lib').value.trim().toUpperCase();
+    if(!cod){fb('fb-lib','Ingrese o escanee un código.','err');return;}
+    const btn=document.getElementById('btn-liberar'); btn.disabled=true; btn.textContent='Procesando…';
+    try{
+        const data=await apiPost('liberar', {codigo:cod});
+        equipos=data.equipos; prestamos=data.prestamos;
+        const eq=equipos.find(e=>e.codigo===cod);
+        const p=[...prestamos].reverse().find(x=>x.codigoEquipo===cod && x.estado==='devuelto');
+        const quien = p ? (p.alumnoNombre||p.alumnoId) : '';
+        let msg = `✅ <strong>${eq?eq.nombre:cod}</strong> liberado.${quien?' Alumno: '+quien:''}`;
+        if(p && p.alumnoEmail){
+            msg += data.correoEnviado ? ' Se envió confirmación por correo.' : ' ⚠️ No se pudo enviar el correo de confirmación (revisa con el administrador).';
+        }
+        fb('fb-lib', msg, data.correoEnviado===false ? 'warn' : 'ok');
+        if(data.correoEnviado===false && data.correoError) console.error('Error de correo:', data.correoError);
+        document.getElementById('inp-lib').value='';stopCam('cl');
+        renderDashboard();
+    }catch(e){
+        fb('fb-lib','❌ '+e.message,'err');
+    }finally{
+        btn.disabled=false; btn.textContent='Liberar Equipo';
+        setTimeout(()=>document.getElementById('inp-lib').focus(),100);
+    }
+}
+
+// ═══ HISTORIAL ══════════════════════════════════════════════════
+function renderHistorial(){
+    const q=(document.getElementById('h-search').value||'').toLowerCase();
+    const f=document.getElementById('h-filter').value;
+    const lista=[...prestamos].reverse().filter(p=>(!q||(p.codigoEquipo+' '+(p.equipoNombre||'')+' '+p.alumnoId+' '+(p.alumnoNombre||'')+' '+(p.alumnoEmail||'')).toLowerCase().includes(q))&&(!f||p.estado===f));
+    const empty=document.getElementById('hist-empty');
+    if(!lista.length){document.getElementById('tbody-hist').innerHTML='';empty.style.display='block';return;}
+    empty.style.display='none';
+    document.getElementById('tbody-hist').innerHTML=lista.map(p=>`<tr>
+        <td><span class="code">${p.codigoEquipo}</span></td><td>${p.equipoNombre||'—'}</td>
+        <td>${p.alumnoNombre?`${p.alumnoNombre}<br><span style="color:#94a3b8;font-size:.76rem">${p.alumnoEmail||p.alumnoId}</span>`:p.alumnoId}</td>
+        <td>${fmtF(p.fechaPrestamo)}</td>
+        <td>${p.fechaDevolucion?fmtF(p.fechaDevolucion):'—'}</td>
+        <td><span class="badge ${p.estado==='activo'?'badge-prest':'badge-dev'}">${p.estado==='activo'?'Activo':'Devuelto'}</span></td>
+    </tr>`).join('');
+}
+
+// ═══ USUARIOS ═══════════════════════════════════════════════════
+async function loadUsuarios(){
+    document.getElementById('tbody-usr').innerHTML = `<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:1.8rem">Cargando…</td></tr>`;
+    try{
+        const data = await apiGet('listUsuarios');
+        usuariosCache = data.usuarios;
+        renderUsuarios();
+    }catch(e){
+        document.getElementById('tbody-usr').innerHTML = `<tr><td colspan="4" style="text-align:center;color:#dc2626;padding:1.8rem">${e.message}</td></tr>`;
+    }
+}
+function renderUsuarios(){
+    document.getElementById('tbody-usr').innerHTML = !usuariosCache.length
+        ? `<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:1.8rem">Sin usuarios</td></tr>`
+        : usuariosCache.map(u=>`<tr>
+            <td><span class="code">${u.usuario}</span></td><td>${u.nombre||'—'}</td>
+            <td><span class="badge ${u.rol==='admin'?'badge-prest':'badge-disp'}">${u.rol==='admin'?'Administrador':'Operador'}</span></td>
+            <td><button class="btn-ghost btn-xs" onclick="openUserModal('${u.usuario}')">✏️</button>${u.usuario.toLowerCase()!==USUARIO.toLowerCase()?`<button class="btn-ghost btn-xs" onclick="delUsuario('${u.usuario}')">🗑️</button>`:''}</td>
+        </tr>`).join('');
+}
+let editUser=null;
+function openUserModal(usuario=null){
+    editUser=usuario;
+    ['u-user','u-nombre','u-pass'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('u-rol').value='operador';
+    document.getElementById('modal-usr-title').textContent = usuario? 'Editar Usuario':'Agregar Usuario';
+    document.getElementById('u-user').disabled = !!usuario;
+    document.getElementById('u-pass-hint').textContent = usuario? '(dejar en blanco para no cambiarla)':'';
+    if(usuario){
+        const u = usuariosCache.find(x=>x.usuario===usuario);
+        if(u){ document.getElementById('u-user').value=u.usuario; document.getElementById('u-nombre').value=u.nombre||''; document.getElementById('u-rol').value=u.rol; }
+    }
+    document.getElementById('modal-usr').classList.add('open');
+    setTimeout(()=>document.getElementById(usuario?'u-nombre':'u-user').focus(),50);
+}
+function closeUserModal(){ document.getElementById('modal-usr').classList.remove('open'); }
+document.getElementById('modal-usr').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeUserModal(); });
+async function saveUsuario(){
+    const usuario = document.getElementById('u-user').value.trim();
+    const nombre = document.getElementById('u-nombre').value.trim();
+    const password = document.getElementById('u-pass').value;
+    const rol = document.getElementById('u-rol').value;
+    if(!usuario){ alert('El usuario es obligatorio.'); return; }
+    if(!editUser && !password){ alert('La contraseña es obligatoria para un usuario nuevo.'); return; }
+    const btn=document.getElementById('btn-save-usr'); btn.disabled=true; btn.textContent='Guardando…';
+    try{
+        const payload = {usuario, nombre, rol};
+        if(password) payload.password = password;
+        const data = editUser ? await apiPost('updateUsuario', payload) : await apiPost('addUsuario', payload);
+        usuariosCache = data.usuarios;
+        closeUserModal(); renderUsuarios();
+    }catch(e){ alert('Error: '+e.message); }
+    finally{ btn.disabled=false; btn.textContent='Guardar'; }
+}
+async function delUsuario(usuario){
+    if(!confirm('¿Eliminar este usuario?')) return;
+    try{
+        const data = await apiPost('deleteUsuario', {usuario});
+        usuariosCache = data.usuarios;
+        renderUsuarios();
+    }catch(e){ alert('Error: '+e.message); }
+}
+
+// ═══ CÁMARA — lee QR y códigos de barras (ZXing) ═══════════════
+// codeReader.decodeFromConstraints() intenta TODOS los formatos que
+// soporta @zxing/library: QR, Code128, Code39, EAN-13/8, UPC-A/E,
+// Codabar, ITF, Data Matrix, etc. — no hace falta indicar cuál es.
+const codeReader = (typeof ZXing !== 'undefined') ? new ZXing.BrowserMultiFormatReader() : null;
+let camActiveKey = null;
+
+function fbIdFor(key){
+    if(key==='cl') return 'fb-lib';
+    if(key==='c1') return 'fb1';
+    if(key==='c2') return 'fb2';
+    if(key==='cm') return 'fb-cm';
+    return null;
+}
+
+async function iniciarCam(key){
+    if(!codeReader){
+        const fbId=fbIdFor(key);
+        if(fbId) fb(fbId,'Este navegador no pudo cargar el lector de códigos. Prueba con Chrome o Edge actualizado.','err');
+        document.getElementById('cam-'+key).style.display='none';
+        return;
+    }
+    camActiveKey = key;
+    try{
+        await codeReader.decodeFromConstraints(
+            { video: { facingMode: 'environment' } },
+            'vid-'+key,
+            (result, err) => {
+                if(camActiveKey!==key) return; // ya se cerró o cambió de cámara
+                if(result){
+                    handleScanResult(key, result.getText());
+                }
+                // Los errores "NotFoundException"/"ChecksumException"/"FormatException" ocurren
+                // en cada cuadro sin código detectado — son normales, no se muestran.
+            }
+        );
+    }catch(err){
+        const fbId=fbIdFor(key);
+        if(fbId) fb(fbId,'No se pudo acceder a la cámara: '+err.message,'err');
+        document.getElementById('cam-'+key).style.display='none';
+        camActiveKey = null;
+    }
+}
+
+function handleScanResult(key, text){
+    if(key==='c1'){ document.getElementById('inp-eq').value=text; stopCam('c1'); chkEquipo(); }
+    else if(key==='c2'){ document.getElementById('inp-al').value=text; stopCam('c2'); chkAlumno(); }
+    else if(key==='cl'){ document.getElementById('inp-lib').value=text; stopCam('cl'); doLiberar(); }
+    else if(key==='cm'){ document.getElementById('m-cod').value=text.trim().toUpperCase(); stopCam('cm'); }
+}
+
+function stopCam(key){
+    if(camActiveKey===key) camActiveKey=null;
+    if(codeReader){ try{ codeReader.reset(); }catch(_){} }
+    const el=document.getElementById('cam-'+key); if(el) el.style.display='none';
+}
+function togCam(key){
+    const el=document.getElementById('cam-'+key);
+    if(el.style.display==='none'){
+        stopAllCams(); // solo una cámara activa a la vez
+        el.style.display='block';
+        iniciarCam(key);
+    }else{
+        stopCam(key);
+    }
+}
+function stopAllCams(){
+    if(codeReader){ try{ codeReader.reset(); }catch(_){} }
+    camActiveKey=null;
+    ['c1','c2','cl','cm'].forEach(k=>{ const el=document.getElementById('cam-'+k); if(el) el.style.display='none'; });
+}
+
+// ═══ HELPERS ════════════════════════════════════════════════════
+function fb(id,msg,tipo){
+    const map={ok:'alert-ok',err:'alert-err',warn:'alert-warn',info:'alert-info'};
+    document.getElementById(id).innerHTML=`<div class="alert ${map[tipo]}">${msg}</div>`;
+    setTimeout(()=>{const el=document.getElementById(id);if(el)el.innerHTML='';},4500);
+}
+function fmtF(iso){
+    if(!iso)return'—';
+    try{return new Date(iso).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+    catch(_){return String(iso);}
+}
+
+// ═══ INICIO ═══════════════════════════════════════════════════════
+(async function init(){
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('app-shell').style.display='none';
+    const ok = await cargarUrlActiva();
+    if(!ok || !API_URL){
+        fbLogin('No se pudo obtener la configuración del servidor (Directorio sin responder y sin caché local). Contacta al administrador.','err');
+        return;
+    }
+    if(TOKEN){ startApp(); }
+})();
+</script>
+</body>
+</html>
